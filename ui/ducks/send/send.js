@@ -1775,7 +1775,7 @@ export function updateSendAmount(amount) {
       addHistoryEntry(`sendFlow - user set amount to ${logAmount}`),
     );
     await dispatch(actions.updateSendAmount(amount));
-    if (state.send.amountMode === AMOUNT_MODES.MAX) {
+    if (state[name].amountMode === AMOUNT_MODES.MAX) {
       await dispatch(actions.updateAmountMode(AMOUNT_MODES.INPUT));
     }
     await dispatch(computeEstimatedGasLimit());
@@ -1797,10 +1797,10 @@ export function updateSendAsset({ type, details: providedDetails }) {
   return async (dispatch, getState) => {
     const state = getState();
     const draftTransaction =
-      state.send.draftTransactions[state.send.currentTransactionUUID];
+      state[name].draftTransactions[state[name].currentTransactionUUID];
     const sendingAddress =
       draftTransaction.fromAccount?.address ??
-      state.send.selectedAccount.address ??
+      state[name].selectedAccount.address ??
       getSelectedAddress(state);
     const account = getTargetAccount(state, sendingAddress);
     if (type === ASSET_TYPES.NATIVE) {
@@ -2061,7 +2061,7 @@ export function updateSendHexData(hexData) {
 export function toggleSendMaxMode() {
   return async (dispatch, getState) => {
     const state = getState();
-    if (state.send.amountMode === AMOUNT_MODES.MAX) {
+    if (state[name].amountMode === AMOUNT_MODES.MAX) {
       await dispatch(actions.updateAmountMode(AMOUNT_MODES.INPUT));
       await dispatch(actions.updateSendAmount('0x0'));
       await dispatch(addHistoryEntry(`sendFlow - user toggled max mode off`));
