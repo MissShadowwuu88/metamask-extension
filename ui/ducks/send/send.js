@@ -28,7 +28,6 @@ import {
   isTokenBalanceSufficient,
 } from '../../pages/send/send.utils';
 import {
-  getAddressBookEntry,
   getAdvancedInlineGasShown,
   getCurrentChainId,
   getGasPriceInHexWei,
@@ -41,6 +40,7 @@ import {
   getAddressBookEntryOrAccountName,
   getIsMultiLayerFeeNetwork,
   getSelectedAccount,
+  getSelectedAddress,
 } from '../../selectors';
 import {
   disconnectGasFeeEstimatePoller,
@@ -130,12 +130,15 @@ import { estimateGasLimitForSend, getRoundedGasPrice } from './helpers';
  * @typedef {(
  *  import('@metamask/controllers').GasEstimateType
  * )} GasEstimateType
+ * @typedef {(
+ *  import('redux').AnyAction
+ * )} AnyAction
  */
 
 /**
  * @template R - Return type of the async function
  * @typedef {(
- *  import('redux-thunk').ThunkAction<R, MetaMaskState, unknown, import('redux').AnyAction>
+ *  import('redux-thunk').ThunkAction<R, MetaMaskState, unknown, AnyAction>
  * )} ThunkAction<R>
  */
 
@@ -284,11 +287,82 @@ export const RECIPIENT_SEARCH_MODES = {
 };
 
 /**
+ * @typedef {Object} Account
+ * @property {string} address - The hex address of the account.
+ * @property {string} balance - Hex string representing the native asset
+ *  balance of the account the transaction will be sent from.
+ */
+
+/**
+ * @typedef {Object} Amount
+ * @property {string} value - A hex string representing the amount of the
+ *  selected currency to send.
+ * @property {string} [error] - Error to display for the amount field.
+ */
+
+/**
+ * @typedef {Object} Asset
+ * @property {AssetTypesString} type - The type of asset that the user
+ *  is attempting to send. Defaults to 'NATIVE' which represents the native
+ *  asset of the chain. Can also be 'TOKEN' or 'COLLECTIBLE'.
+ * @property {string} balance - A hex string representing the balance
+ *  that the user holds of the asset that they are attempting to send.
+ * @property {TokenDetails} [details] - An object that describes the
+ *  selected asset in the case that the user is sending a token or collectibe.
+ *  Will be null when asset.type is 'NATIVE'.
+ * @property {string} [error] - Error to display when there is an issue
+ *  with the asset.
+ */
+
+/**
+ * @typedef {Object} GasFees
+ * @property {string} gasLimit - maximum gas needed for tx.
+ * @property {string} gasPrice - price in wei to pay per gas.
+ * @property {string} maxFeePerGas - Maximum price in wei to pay per gas.
+ * @property {string} maxPriorityFeePerGas - Maximum priority fee in wei to pay
+ *  per gas.
+ * @property {string} gasTotal - maximum total price in wei to pay.
+ * @property {string} [error] - error to display for gas fields.
+ */
+
+/**
+ * An object that describes the intended recipient of a transaction.
+ *
+ * @typedef {Object} Recipient
+ * @property {string} address - The fully qualified address of the recipient.
+ *  This is set after the recipient.userInput is validated, the userInput field
+ *  is quickly updated to avoid delay between keystrokes and seeing the input
+ *  field updated. After a debounc the address typed is validated and then the
+ *  address field is updated. The address field is also set when the user
+ *  selects a contact or account from the list, or an ENS resolution when
+ *  typing ENS names.
+ * @property {string} nickname - The nickname that the user has added to their
+ *  address book for the recipient.address.
+ * @property {string} [error] - Error to display on the address field.
+ * @property {string} [warning] - Warning to display on the address field.
+ */
+
+/**
  * @typedef {Object} DraftTransaction
+ * @property {Amount} amount - An object containing information about the
+ *  amount of currency to send.
+ * @property {Asset} asset - An object that describes the asset that the user
+ *  has selected to send.
+ * @property {Account} [fromAccount] - The send flow is usually only relative to
+ *  the currently selected account. When editing a transaction, however, the
+ *  account may differ. In that case, the details of that account will be
+ *  stored in this object within the draftTransaction.
+ * @property {GasFees} gas - Details about the current gas settings
+ * @property {Array<{event: string, timestamp: number}>} history - An array of
+ *  entries that describe the user's journey through the send flow. This is
+ *  sent to the controller for attaching to state logs for troubleshooting and
+ *  support.
  * @property {string} [id] - If the transaction has already been added to the
  *  TransactionController this field will be populated with its id from the
  *  TransactionController state. This is required to be able to update the
  *  transaction in the controller.
+ * @property {Recipient} recipient - An object that describes the intended
+ *  recipient of the transaction.
  * @property {DraftTxStatusString} status - Describes the validity of the draft
  *  transaction, which will be either 'VALID' or 'INVALID', depending on our
  *  ability to generate a valid txParams object for submission.
@@ -297,79 +371,12 @@ export const RECIPIENT_SEARCH_MODES = {
  * @property {string} [userInputHexData] - When a user has enabled custom hex
  *  data field in advanced options, they can supply data to the field which is
  *  stored under this key.
- * @property {Object} [fromAccount] - The send flow is usually only relative to
- *  the currently selected account. When editing a transaction, however, the
- *  account may differ. In that case, the details of that account will be
- *  stored in this object within the draftTransaction.
- * @property {string} [fromAccount.address] - The address of the account the
- *  transaction will be sent from. If this key is not present, the selected
- *  account address from the SendState will be used.
- * @property {string} [fromAccount.balance] - Hex string representing the
- *  native asset balance of the account the transaction will be sent from. If
- *  this key is not present the selected account nativeBalance from the
- *  sendState will be used.
- * @property {Object} gas - Details about the current gas settings
- * @property {string} gas.gasLimit - maximum gas needed for tx.
- * @property {string} gas.gasPrice - price in wei to pay per gas.
- * @property {string} gas.maxFeePerGas - Maximum price in wei to pay per gas.
- * @property {string} gas.maxPriorityFeePerGas - Maximum priority fee in wei to
- *  pay per gas.
- * @property {string} gas.gasTotal - maximum total price in wei to pay.
- * @property {string} [gas.error] - error to display for gas fields.
- * @property {Object} amount - An object containing information about the
- *  amount of currency to send.
- * @property {string} amount.value - A hex string representing the amount of
- *  the selected currency to send.
- * @property {string} [amount.error] - Error to display for the amount field.
- * @property {Object} asset - An object that describes the asset that the user
- *  has selected to send.
- * @property {AssetTypesString} asset.type - The type of asset that the user
- *  is attempting to send. Defaults to 'NATIVE' which represents the native
- *  asset of the chain. Can also be 'TOKEN' or 'COLLECTIBLE'.
- * @property {string} asset.balance - A hex string representing the balance
- *  that the user holds of the asset that they are attempting to send.
- * @property {TokenDetails} [asset.details] - An object that describes the
- *  selected asset in the case that the user is sending a token or collectibe.
- *  Will be null when asset.type is 'NATIVE'.
- * @property {string} [asset.error] - Error to display when there is an issue
- *  with the asset.
- * @property {Object} recipient - An object that describes the intended
- *  recipient of the transaction.
- * @property {string} recipient.address - The fully qualified address of the
- *  recipient. This is set after the recipient.userInput is validated, the
- *  userInput field is quickly updated to avoid delay between keystrokes and
- *  seeing the input field updated. After a debounc the address typed is
- *  validated and then the address field is updated. The address field is also
- *  set when the user selects a contact or account from the list, or an ENS
- *  resolution when typing ENS names.
- * @property {string} recipient.nickname - The nickname that the user has added
- *  to their address book for the recipient.address.
- * @property {string} [recipient.error] - Error to display on the address field.
- * @property {string} [recipient.warning] - Warning to display on the address
- *  field.
- * @property {Array<{event: string, timestamp: number}>} history - An array of
- *  entries that describe the user's journey through the send flow. This is
- *  sent to the controller for attaching to state logs for troubleshooting and
- *  support.
  */
 
 /**
  * @type {DraftTransaction}
  */
 export const draftTransactionInitialState = {
-  id: null,
-  status: SEND_STATUSES.VALID,
-  transactionType: TRANSACTION_ENVELOPE_TYPES.LEGACY,
-  userInputHexData: null,
-  fromAccount: null,
-  gas: {
-    gasLimit: '0x0',
-    gasPrice: '0x0',
-    maxFeePerGas: '0x0',
-    maxPriorityFeePerGas: '0x0',
-    gasTotal: '0x0',
-    error: null,
-  },
   amount: {
     value: '0x0',
     error: null,
@@ -380,13 +387,26 @@ export const draftTransactionInitialState = {
     details: null,
     error: null,
   },
+  fromAccount: null,
+  gas: {
+    gasLimit: '0x0',
+    gasPrice: '0x0',
+    maxFeePerGas: '0x0',
+    maxPriorityFeePerGas: '0x0',
+    gasTotal: '0x0',
+    error: null,
+  },
+  history: [],
+  id: null,
   recipient: {
     address: '',
     nickname: '',
     error: null,
     warning: null,
   },
-  history: [],
+  status: SEND_STATUSES.VALID,
+  transactionType: TRANSACTION_ENVELOPE_TYPES.LEGACY,
+  userInputHexData: null,
 };
 
 /**
@@ -404,11 +424,10 @@ export const draftTransactionInitialState = {
  *  send screen not being shown.
  * @property {boolean} eip1559support - tracks whether the current network
  *  supports EIP 1559 transactions.
- * @property {string} [accountAddress] - from account address, defaults to
- *  selected account. will be the account the original transaction was sent
- *  from in the case of the EDIT stage.
- * @property {string} nativeBalance - Hex string representing the native asset
- * balance of the account.
+ * @property {Account} selectedAccount - The currently selected account in
+ *  MetaMask. Native balance and address will be pulled from this account if a
+ *  fromAccount is not specified in the draftTransaction object. During an edit
+ *  the fromAccount is specified.
  * @property {string} layer1GasTotal -  Layer 1 gas fee total on multi-layer
  *  fee networks
  * @property {boolean} isGasEstimateLoading - Indicates whether the gas
@@ -443,8 +462,10 @@ export const initialState = {
   currentTransactionUUID: null,
   eip1559support: false,
   stage: SEND_STAGES.INACTIVE,
-  accountAddress: null,
-  nativeBalance: '0x0',
+  selectedAccount: {
+    address: null,
+    balance: '0x0',
+  },
   layer1GasTotal: '0x0',
   isGasEstimateLoading: true,
   isCustomGasSet: false,
@@ -509,9 +530,9 @@ export const computeEstimatedGasLimit = createAsyncThunk(
           to: draftTransaction.recipient.address?.toLowerCase(),
           value:
             send.amountMode === 'MAX'
-              ? send.account.balance
+              ? send.selectedAccount.balance
               : send.amount.value,
-          from: send.accountAddress,
+          from: send.selectedAccount.address,
           data: draftTransaction.userInputHexData,
           type: '0x0',
         },
@@ -604,7 +625,10 @@ export const initializeSendState = createAsyncThunk(
     // for gasLimit estimation and won't be set directly in state. Instead, we
     // will return the gasFeeEstimates and gasEstimateType so that the reducer
     // can set the appropriate gas fees in state.
-    let gasPrice = '0x1';
+    let gasPrice =
+      sendState.stage === SEND_STAGES.EDIT
+        ? draftTransaction.gas.gasPrice
+        : '0x1';
     let gasEstimatePollToken = null;
 
     // Instruct the background process that polling for gas prices should begin
@@ -616,41 +640,45 @@ export const initializeSendState = createAsyncThunk(
       metamask: { gasFeeEstimates, gasEstimateType },
     } = thunkApi.getState();
 
-    // Because we are only interested in getting a gasLimit estimation we only
-    // need to worry about gasPrice. So we use maxFeePerGas as gasPrice if we
-    // have a fee market estimation.
-    if (gasEstimateType === GAS_ESTIMATE_TYPES.LEGACY) {
-      gasPrice = getGasPriceInHexWei(gasFeeEstimates.medium);
-    } else if (gasEstimateType === GAS_ESTIMATE_TYPES.ETH_GASPRICE) {
-      gasPrice = getRoundedGasPrice(gasFeeEstimates.gasPrice);
-    } else if (gasEstimateType === GAS_ESTIMATE_TYPES.FEE_MARKET) {
-      gasPrice = getGasPriceInHexWei(
-        gasFeeEstimates.medium.suggestedMaxFeePerGas,
-      );
-    } else {
-      gasPrice = gasFeeEstimates.gasPrice
-        ? getRoundedGasPrice(gasFeeEstimates.gasPrice)
-        : '0x0';
+    if (sendState.stage !== SEND_STAGES.EDIT) {
+      // Because we are only interested in getting a gasLimit estimation we only
+      // need to worry about gasPrice. So we use maxFeePerGas as gasPrice if we
+      // have a fee market estimation.
+      if (gasEstimateType === GAS_ESTIMATE_TYPES.LEGACY) {
+        gasPrice = getGasPriceInHexWei(gasFeeEstimates.medium);
+      } else if (gasEstimateType === GAS_ESTIMATE_TYPES.ETH_GASPRICE) {
+        gasPrice = getRoundedGasPrice(gasFeeEstimates.gasPrice);
+      } else if (gasEstimateType === GAS_ESTIMATE_TYPES.FEE_MARKET) {
+        gasPrice = getGasPriceInHexWei(
+          gasFeeEstimates.medium.suggestedMaxFeePerGas,
+        );
+      } else {
+        gasPrice = gasFeeEstimates.gasPrice
+          ? getRoundedGasPrice(gasFeeEstimates.gasPrice)
+          : '0x0';
+      }
     }
 
     // Set a basic gasLimit in the event that other estimation fails
-    let gasLimit =
-      draftTransaction.asset.type === ASSET_TYPES.TOKEN ||
-      draftTransaction.asset.type === ASSET_TYPES.COLLECTIBLE
-        ? GAS_LIMITS.BASE_TOKEN_ESTIMATE
-        : GAS_LIMITS.SIMPLE;
+    let { gasLimit } = draftTransaction.gas;
     if (
       gasEstimateType !== GAS_ESTIMATE_TYPES.NONE &&
       sendState.stage !== SEND_STAGES.EDIT &&
       draftTransaction.recipient.address
     ) {
+      gasLimit =
+        draftTransaction.asset.type === ASSET_TYPES.TOKEN ||
+        draftTransaction.asset.type === ASSET_TYPES.COLLECTIBLE
+          ? GAS_LIMITS.BASE_TOKEN_ESTIMATE
+          : GAS_LIMITS.SIMPLE;
       // Run our estimateGasLimit logic to get a more accurate estimation of
       // required gas. If this value isn't nullish, set it as the new gasLimit
       const estimatedGasLimit = await estimateGasLimitForSend({
         gasPrice,
         blockGasLimit: metamask.currentBlockGasLimit,
         selectedAddress:
-          draftTransaction.fromAddress?.address ?? sendState.account.address,
+          draftTransaction.fromAccount?.address ??
+          sendState.selectedAccount.address,
         sendToken: draftTransaction.asset.details,
         to: draftTransaction.recipient.address.toLowerCase(),
         value: draftTransaction.amount.value,
@@ -694,7 +722,9 @@ function generateTransactionParams(sendState) {
   const txParams = {
     // If the fromAccount has been specified we use that, if not we use the
     // selected account.
-    from: draftTransaction.fromAccount?.address || sendState.accountAddress,
+    from:
+      draftTransaction.fromAccount?.address ||
+      sendState.selectedAccount.address,
     // gasLimit always needs to be set regardless of the asset being sent
     // or the type of transaction.
     gas: draftTransaction.gas.gasLimit,
@@ -722,7 +752,9 @@ function generateTransactionParams(sendState) {
       txParams.value = '0x0';
       txParams.data = generateERC721TransferData({
         toAddress: draftTransaction.recipient.address,
-        fromAddress: draftTransaction.account.address,
+        fromAddress:
+          draftTransaction.fromAccount.address ??
+          sendState.selectedAccount.address,
         tokenId: draftTransaction.asset.details.tokenId,
       });
       break;
@@ -1168,6 +1200,16 @@ const slice = createSlice({
     updateAsset: (state, action) => {
       const draftTransaction =
         state.draftTransactions[state.currentTransactionUUID];
+
+      // If an asset update occurs that changes the type from 'NATIVE' to
+      // 'NATIVE' then this is likely the initial asset set of an edit
+      // transaction. We don't need to set the amount to zero in this case.
+      // The only times where an update would occur of this nature that we
+      // would want to set the amount to zero is on a network or account change
+      // but that update is handled elsewhere.
+      const skipAmountUpdate =
+        action.payload.type === ASSET_TYPES.NATIVE &&
+        draftTransaction.asset.type === ASSET_TYPES.NATIVE;
       draftTransaction.asset.type = action.payload.type;
       draftTransaction.asset.balance = action.payload.balance;
       draftTransaction.asset.error = action.payload.error;
@@ -1197,7 +1239,7 @@ const slice = createSlice({
       // to zero. This will revalidate the send amount field.
       if (state.amountMode === AMOUNT_MODES.MAX) {
         slice.caseReducers.updateAmountToMax(state);
-      } else {
+      } else if (skipAmountUpdate === false) {
         slice.caseReducers.updateSendAmount(state, { payload: '0x0' });
       }
       // validate send state
@@ -1487,18 +1529,24 @@ const slice = createSlice({
         if (state.stage !== SEND_STAGES.EDIT) {
           // This event occurs when the user selects a new account from the
           // account menu, or the currently active account's balance updates.
-          state.nativeBalance = action.payload.account.balance;
-          state.accountAddress = action.payload.account.address;
-          // We need to update the asset balance if the asset is the native
-          // network asset. Once we update the balance we recompute error state.
+          state.selectedAccount.balance = action.payload.account.balance;
+          state.selectedAccount.address = action.payload.account.address;
           const draftTransaction =
             state.draftTransactions[state.currentTransactionUUID];
-          if (draftTransaction?.asset.type === ASSET_TYPES.NATIVE) {
-            draftTransaction.asset.balance = action.payload.account.balance;
+          // This action will occur even when we aren't on the send flow, which
+          // is okay as it keeps the selectedAccount details up to date. We do
+          // not need to validate anything if there isn't a current draft
+          // transaction. If there is, we need to update the asset balance if
+          // the asset is set to the native network asset, and then validate
+          // the transaction.
+          if (draftTransaction) {
+            if (draftTransaction?.asset.type === ASSET_TYPES.NATIVE) {
+              draftTransaction.asset.balance = action.payload.account.balance;
+            }
+            slice.caseReducers.validateAmountField(state);
+            slice.caseReducers.validateGasField(state);
+            slice.caseReducers.validateSendState(state);
           }
-          slice.caseReducers.validateAmountField(state);
-          slice.caseReducers.validateGasField(state);
-          slice.caseReducers.validateSendState(state);
         }
       })
       .addCase(ACCOUNT_CHANGED, (state, action) => {
@@ -1507,13 +1555,13 @@ const slice = createSlice({
         // appropriately
         if (
           state.stage === SEND_STAGES.EDIT &&
-          action.payload.account.address === state.accountAddress
+          action.payload.account.address === state.selectedAccount.address
         ) {
           // This event occurs when the user's account details update due to
           // background state changes. If the account that is being updated is
           // the current from account on the edit flow we need to update
           // the balance for the account and revalidate the send state.
-          state.nativeBalance = action.payload.account.balance;
+          state.selectedAccount.balance = action.payload.account.balance;
           // We need to update the asset balance if the asset is the native
           // network asset. Once we update the balance we recompute error state.
           const draftTransaction =
@@ -1552,8 +1600,8 @@ const slice = createSlice({
         // writes the computed initialized state values into the slice and then
         // calculates slice validity using the caseReducers.
         state.eip1559support = action.payload.eip1559support;
-        state.accountAddress = action.payload.account.address;
-        state.nativeBalance = action.payload.account.balance;
+        state.selectedAccount.address = action.payload.account.address;
+        state.selectedAccount.balance = action.payload.account.balance;
         const draftTransaction =
           state.draftTransactions[state.currentTransactionUUID];
         draftTransaction.gas.gasLimit = action.payload.gasLimit;
@@ -1751,7 +1799,10 @@ export function updateSendAsset({ type, details: providedDetails }) {
     const draftTransaction =
       state.send.draftTransactions[state.send.currentTransactionUUID];
     const sendingAddress =
-      draftTransaction.fromAccount?.address ?? state.send.accountAddress;
+      draftTransaction.fromAccount?.address ??
+      state.send.selectedAccount.address ??
+      getSelectedAddress(state);
+    const account = getTargetAccount(state, sendingAddress);
     if (type === ASSET_TYPES.NATIVE) {
       await dispatch(
         addHistoryEntry(
@@ -1764,7 +1815,7 @@ export function updateSendAsset({ type, details: providedDetails }) {
         actions.updateAsset({
           type,
           details: null,
-          balance: state.send.nativeBalance,
+          balance: account.balance,
           error: null,
         }),
       );
@@ -2179,7 +2230,8 @@ export function editExistingTransaction(assetType, transactionId) {
             ...draftTransactionInitialState.recipient,
             address: transaction.txParams.to,
             nickname:
-              getAddressBookEntry(state, transaction.txParams.to)?.name ?? '',
+              getAddressBookEntryOrAccountName(state, transaction.txParams.to)
+                ?.name ?? '',
           },
           amount: {
             ...draftTransactionInitialState.amount,
@@ -2198,7 +2250,8 @@ export function editExistingTransaction(assetType, transactionId) {
       const tokenAmountInDec =
         assetType === ASSET_TYPES.TOKEN ? getTokenValueParam(tokenData) : '1';
       const address = getTokenAddressParam(tokenData);
-      const nickname = getAddressBookEntry(state, address)?.name ?? '';
+      const nickname =
+        getAddressBookEntryOrAccountName(state, address)?.name ?? '';
 
       const tokenAmountInHex = addHexPrefix(
         conversionUtil(tokenAmountInDec, {
