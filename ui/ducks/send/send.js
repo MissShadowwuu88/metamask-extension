@@ -1448,7 +1448,9 @@ const slice = createSlice({
           draftTransaction.asset.type === ASSET_TYPES.NATIVE
             ? draftTransaction.amount.value
             : '0x0',
-        balance: draftTransaction.fromAccount?.balance ?? state.nativeBalance,
+        balance:
+          draftTransaction.fromAccount?.balance ??
+          state.selectedAccount.balance,
         gasTotal: draftTransaction.gas.gasTotal ?? '0x0',
       });
 
