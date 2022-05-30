@@ -143,9 +143,15 @@ import { estimateGasLimitForSend, getRoundedGasPrice } from './helpers';
  */
 
 /**
+ * This type will take a typical constant string mapped object and turn it into
+ * a union type of the values.
+ *
+ * @template O - The object to make strings out of
+ * @typedef {O[keyof O]} MapValuesToUnion<O>
+ */
+
+/**
  * @typedef {Object} SendStateStages
- * @property {'INACTIVE'} INACTIVE - The send state is idle, and hasn't yet
- *  fetched required data for gasPrice and gasLimit estimations, etc.
  * @property {'ADD_RECIPIENT'} ADD_RECIPIENT - The user is selecting which
  *  address to send an asset to.
  * @property {'DRAFT'} DRAFT - The send form is shown for a transaction yet to
@@ -154,13 +160,8 @@ import { estimateGasLimitForSend, getRoundedGasPrice } from './helpers';
  *  submitted to the Transaction Controller but not yet confirmed. This happens
  *  when a confirmation is shown for a transaction and the 'edit' button in the
  *  header is clicked.
- */
-
-/**
- * This type will work anywhere you expect a string that can be one of the
- * above Stages
- *
- * @typedef {SendStateStages[keyof SendStateStages]} SendStateStagesStrings
+ * @property {'INACTIVE'} INACTIVE - The send state is idle, and hasn't yet
+ *  fetched required data for gasPrice and gasLimit estimations, etc.
  */
 
 /**
@@ -169,15 +170,14 @@ import { estimateGasLimitForSend, getRoundedGasPrice } from './helpers';
  * @type {SendStateStages}
  */
 export const SEND_STAGES = {
-  INACTIVE: 'INACTIVE',
   ADD_RECIPIENT: 'ADD_RECIPIENT',
   DRAFT: 'DRAFT',
   EDIT: 'EDIT',
+  INACTIVE: 'INACTIVE',
 };
 
 /**
  * @typedef {Object} DraftTxStatus
- * @property {'VALID'} VALID - The transaction is valid and can be submitted.
  * @property {'INVALID'} INVALID - The transaction is invalid and cannot be
  *  submitted. There are a number of cases that would result in an invalid
  *  send state:
@@ -188,13 +188,7 @@ export const SEND_STAGES = {
  *  4. The amount of sent asset is greater than the user's *asset* balance
  *  5. Gas price estimates failed to load entirely
  *  6. The gasLimit is less than 21000 (0x5208)
- */
-
-/**
- * This type will work anywhere you expect a string that can be one of the
- * above statuses
- *
- * @typedef {DraftTxStatus[keyof DraftTxStatus]} DraftTxStatusString
+ * @property {'VALID'} VALID - The transaction is valid and can be submitted.
  */
 
 /**
@@ -203,26 +197,19 @@ export const SEND_STAGES = {
  * @type {DraftTxStatus}
  */
 export const SEND_STATUSES = {
-  VALID: 'VALID',
   INVALID: 'INVALID',
+  VALID: 'VALID',
 };
 
 /**
  * @typedef {Object} SendStateGasModes
  * @property {'BASIC'} BASIC - Shows the basic estimate slow/avg/fast buttons
  *  when on mainnet and the metaswaps API request is successful.
- * @property {'INLINE'} INLINE - Shows inline gasLimit/gasPrice fields when on
- *  any other network or metaswaps API fails and we use eth_gasPrice.
  * @property {'CUSTOM'} CUSTOM - Shows GasFeeDisplay component that is a read
  *  only display of the values the user has set in the advanced gas modal
  *  (stored in the gas duck under the customData key).
- */
-
-/**
- * This type will work anywhere you expect a string that can be one of the
- * above gas modes
- *
- * @typedef {SendStateGasModes[keyof SendStateGasModes]} SendStateGasModeStrings
+ * @property {'INLINE'} INLINE - Shows inline gasLimit/gasPrice fields when on
+ *  any other network or metaswaps API fails and we use eth_gasPrice.
  */
 
 /**
@@ -232,8 +219,8 @@ export const SEND_STATUSES = {
  */
 export const GAS_INPUT_MODES = {
   BASIC: 'BASIC',
-  INLINE: 'INLINE',
   CUSTOM: 'CUSTOM',
+  INLINE: 'INLINE',
 };
 
 /**
@@ -242,13 +229,6 @@ export const GAS_INPUT_MODES = {
  *  field.
  * @property {'MAX'} MAX - The user selects the MAX button and amount is
  *  calculated based on balance - (amount + gasTotal).
- */
-
-/**
- * This type will work anywhere you expect a string that can be one of the
- * above gas modes
- *
- * @typedef {SendStateAmountModes[keyof SendStateAmountModes]} SendStateAmountModeStrings
  */
 
 /**
@@ -263,17 +243,10 @@ export const AMOUNT_MODES = {
 
 /**
  * @typedef {Object} SendStateRecipientModes
- * @property {'MY_ACCOUNTS'} MY_ACCOUNTS - the user is displayed a list of
- *  their own accounts to send to.
  * @property {'CONTACT_LIST'} CONTACT_LIST - The user is displayed a list of
  *  their contacts and addresses they have recently send to.
- */
-
-/**
- * This type will work anywhere you expect a string that can be one of the
- * above recipient modes
- *
- * @typedef {SendStateRecipientModes[keyof SendStateRecipientModes]} SendStateRecipientModeStrings
+ * @property {'MY_ACCOUNTS'} MY_ACCOUNTS - the user is displayed a list of
+ *  their own accounts to send to.
  */
 
 /**
@@ -282,8 +255,8 @@ export const AMOUNT_MODES = {
  * @type {SendStateRecipientModes}
  */
 export const RECIPIENT_SEARCH_MODES = {
-  MY_ACCOUNTS: 'MY_ACCOUNTS',
   CONTACT_LIST: 'CONTACT_LIST',
+  MY_ACCOUNTS: 'MY_ACCOUNTS',
 };
 
 /**
@@ -295,16 +268,13 @@ export const RECIPIENT_SEARCH_MODES = {
 
 /**
  * @typedef {Object} Amount
+ * @property {string} [error] - Error to display for the amount field.
  * @property {string} value - A hex string representing the amount of the
  *  selected currency to send.
- * @property {string} [error] - Error to display for the amount field.
  */
 
 /**
  * @typedef {Object} Asset
- * @property {AssetTypesString} type - The type of asset that the user
- *  is attempting to send. Defaults to 'NATIVE' which represents the native
- *  asset of the chain. Can also be 'TOKEN' or 'COLLECTIBLE'.
  * @property {string} balance - A hex string representing the balance
  *  that the user holds of the asset that they are attempting to send.
  * @property {TokenDetails} [details] - An object that describes the
@@ -312,17 +282,20 @@ export const RECIPIENT_SEARCH_MODES = {
  *  Will be null when asset.type is 'NATIVE'.
  * @property {string} [error] - Error to display when there is an issue
  *  with the asset.
+ * @property {AssetTypesString} type - The type of asset that the user
+ *  is attempting to send. Defaults to 'NATIVE' which represents the native
+ *  asset of the chain. Can also be 'TOKEN' or 'COLLECTIBLE'.
  */
 
 /**
  * @typedef {Object} GasFees
+ * @property {string} [error] - error to display for gas fields.
  * @property {string} gasLimit - maximum gas needed for tx.
  * @property {string} gasPrice - price in wei to pay per gas.
+ * @property {string} gasTotal - maximum total price in wei to pay.
  * @property {string} maxFeePerGas - Maximum price in wei to pay per gas.
  * @property {string} maxPriorityFeePerGas - Maximum priority fee in wei to pay
  *  per gas.
- * @property {string} gasTotal - maximum total price in wei to pay.
- * @property {string} [error] - error to display for gas fields.
  */
 
 /**
@@ -336,9 +309,9 @@ export const RECIPIENT_SEARCH_MODES = {
  *  address field is updated. The address field is also set when the user
  *  selects a contact or account from the list, or an ENS resolution when
  *  typing ENS names.
+ * @property {string} [error] - Error to display on the address field.
  * @property {string} nickname - The nickname that the user has added to their
  *  address book for the recipient.address.
- * @property {string} [error] - Error to display on the address field.
  * @property {string} [warning] - Warning to display on the address field.
  */
 
@@ -363,9 +336,10 @@ export const RECIPIENT_SEARCH_MODES = {
  *  transaction in the controller.
  * @property {Recipient} recipient - An object that describes the intended
  *  recipient of the transaction.
- * @property {DraftTxStatusString} status - Describes the validity of the draft
- *  transaction, which will be either 'VALID' or 'INVALID', depending on our
- *  ability to generate a valid txParams object for submission.
+ * @property {MapValuesToUnion<DraftTxStatus>} status - Describes the
+ *  validity of the draft transaction, which will be either 'VALID' or
+ *  'INVALID', depending on our ability to generate a valid txParams object for
+ *  submission.
  * @property {string} transactionType - Determines type of transaction being
  *  sent, defaulted to 0x0 (legacy).
  * @property {string} [userInputHexData] - When a user has enabled custom hex
@@ -378,30 +352,30 @@ export const RECIPIENT_SEARCH_MODES = {
  */
 export const draftTransactionInitialState = {
   amount: {
-    value: '0x0',
     error: null,
+    value: '0x0',
   },
   asset: {
-    type: ASSET_TYPES.NATIVE,
     balance: '0x0',
     details: null,
     error: null,
+    type: ASSET_TYPES.NATIVE,
   },
   fromAccount: null,
   gas: {
+    error: null,
     gasLimit: '0x0',
     gasPrice: '0x0',
+    gasTotal: '0x0',
     maxFeePerGas: '0x0',
     maxPriorityFeePerGas: '0x0',
-    gasTotal: '0x0',
-    error: null,
   },
   history: [],
   id: null,
   recipient: {
     address: '',
-    nickname: '',
     error: null,
+    nickname: '',
     warning: null,
   },
   status: SEND_STATUSES.VALID,
@@ -413,69 +387,70 @@ export const draftTransactionInitialState = {
  * Describes the state tree of the send slice
  *
  * @typedef {Object} SendState
+ * @property {MapValuesToUnion<SendStateAmountModes>} amountMode - Describe
+ *  whether the user has manually input an amount or if they have selected max
+ *  to send the maximum amount of the selected currency.
  * @property {string} currentTransactionUUID - The UUID of the transaction
  *  currently being modified by the send flow. This UUID is generated upon
  *  initialization of the send flow, any previous UUIDs are discarded at
  *  clean up AND during initialization. When a transaction is edited a new UUID
  *  is generated for it and the state of that transaction is copied into a new
  *  entry in the draftTransactions object.
- * @property {SendStateStagesStrings} stage - The stage of the send flow that
- *  the user has progressed to. Defaults to 'INACTIVE' which results in the
- *  send screen not being shown.
+ * @property {Object.<string, DraftTransaction>} draftTransactions - An object keyed
+ *  by UUID with draftTransactions as the values.
  * @property {boolean} eip1559support - tracks whether the current network
  *  supports EIP 1559 transactions.
+ * @property {boolean} gasEstimateIsLoading - Indicates whether the gas
+ *  estimate is loading.
+ * @property {string} [gasEstimatePollToken] - String token identifying a
+ *  listener for polling on the gasFeeController
+ * @property {boolean} gasIsSetInModal - true if the user set custom gas in the
+ *  custom gas modal
+ * @property {string} gasLimitMinimum - minimum supported gasLimit.
+ * @property {string} gasPriceEstimate - Expected price in wei necessary to
+ *  pay per gas used for a transaction to be included in a reasonable timeframe.
+ *  Comes from the GasFeeController.
+ * @property {string} gasTotalForLayer1 -  Layer 1 gas fee total on multi-layer
+ *  fee networks
+ * @property {string} recipientInput - The user input of the recipient
+ *  which is updated quickly to avoid delays in the UI reflecting manual entry
+ *  of addresses.
+ * @property {MapValuesToUnion<SendStateRecipientModes>} recipientMode -
+ *  Describes which list of recipients the user is shown on the add recipient
+ *  screen. When this key is set to 'MY_ACCOUNTS' the user is shown the list of
+ *  accounts they own. When it is 'CONTACT_LIST' the user is shown the list of
+ *  contacts they have saved in MetaMask and any addresses they have recently
+ *  sent to.
  * @property {Account} selectedAccount - The currently selected account in
  *  MetaMask. Native balance and address will be pulled from this account if a
  *  fromAccount is not specified in the draftTransaction object. During an edit
  *  the fromAccount is specified.
- * @property {string} layer1GasTotal -  Layer 1 gas fee total on multi-layer
- *  fee networks
- * @property {boolean} isGasEstimateLoading - Indicates whether the gas
- *  estimate is loading.
- * @property {boolean} isCustomGasSet - true if the user set custom gas in the
- *  custom gas modal
- * @property {string} gasPriceEstimate - Expected price in wei necessary to
- *  pay per gas used for a transaction to be included in a reasonable timeframe.
- *  Comes from the GasFeeController.
- * @property {string} [gasEstimatePollToken] - String token identifying a
- *  listener for polling on the gasFeeController
- * @property {string} minimumGasLimit - minimum supported gasLimit.
- * @property {SendStateAmountModeStrings} amountMode - Describe whether the
- *  user has manually input an amount or if they have selected max to send the
- *  maximum amount of the selected currency.
- * @property {SendStateRecipientModeStrings} recipientMode - Describes which
- *  list of recipients the user is shown on the add recipient screen. When this
- *  key is set to 'MY_ACCOUNTS' the user is shown the list of accounts they
- *  own. When it is 'CONTACT_LIST' the user is shown the list of contacts they
- *  have saved in MetaMask and any addresses they have recently sent to.
- * @property {string} recipientInput - The user input of the recipient
- *  which is updated quickly to avoid delays in the UI reflecting manual entry
- *  of addresses.
- * @property {Object.<string, DraftTransaction>} draftTransactions - An object keyed
- *  by UUID with draftTransactions as the values.
+ * @property {MapValuesToUnion<SendStateStages>} stage - The stage of the
+ *  send flow that the user has progressed to. Defaults to 'INACTIVE' which
+ *  results in the send screen not being shown.
  */
 
 /**
  * @type {SendState}
  */
 export const initialState = {
+  amountMode: AMOUNT_MODES.INPUT,
   currentTransactionUUID: null,
+  draftTransactions: {},
   eip1559support: false,
-  stage: SEND_STAGES.INACTIVE,
+  gasEstimateIsLoading: true,
+  gasEstimatePollToken: null,
+  gasIsSetInModal: false,
+  gasPriceEstimate: '0x0',
+  gasLimitMinimum: GAS_LIMITS.SIMPLE,
+  gasTotalForLayer1: '0x0',
+  recipientMode: RECIPIENT_SEARCH_MODES.CONTACT_LIST,
+  recipientInput: '',
   selectedAccount: {
     address: null,
     balance: '0x0',
   },
-  layer1GasTotal: '0x0',
-  isGasEstimateLoading: true,
-  isCustomGasSet: false,
-  gasPriceEstimate: '0x0',
-  gasEstimatePollToken: null,
-  minimumGasLimit: GAS_LIMITS.SIMPLE,
-  amountMode: AMOUNT_MODES.INPUT,
-  recipientMode: RECIPIENT_SEARCH_MODES.CONTACT_LIST,
-  recipientInput: '',
-  draftTransactions: {},
+  stage: SEND_STAGES.INACTIVE,
 };
 
 /**
@@ -521,9 +496,9 @@ export const computeEstimatedGasLimit = createAsyncThunk(
     const isNonStandardEthChain = getIsNonStandardEthChain(state);
     const chainId = getCurrentChainId(state);
 
-    let layer1GasTotal;
+    let gasTotalForLayer1;
     if (isMultiLayerFeeNetwork) {
-      layer1GasTotal = await fetchEstimatedL1Fee(global.eth, {
+      gasTotalForLayer1 = await fetchEstimatedL1Fee(global.eth, {
         txParams: {
           gasPrice: draftTransaction.gas.gasPrice,
           gas: draftTransaction.gas.gasLimit,
@@ -559,7 +534,7 @@ export const computeEstimatedGasLimit = createAsyncThunk(
       await thunkApi.dispatch(setCustomGasLimit(gasLimit));
       return {
         gasLimit,
-        layer1GasTotal,
+        gasTotalForLayer1,
       };
     }
     return null;
@@ -801,7 +776,7 @@ function generateTransactionParams(sendState) {
  *  import('@reduxjs/toolkit').PayloadAction<string>
  * )} SimpleStringPayload
  * @typedef {(
- *  import('@reduxjs/toolkit').PayloadAction<SendStateAmountModeStrings>
+ *  import('@reduxjs/toolkit').PayloadAction<MapValuesToUnion<SendStateAmountModes>>
  * )} SendStateAmountModePayload
  * @typedef {(
  *  import('@reduxjs/toolkit').PayloadAction<DraftTransaction['asset']>
@@ -961,7 +936,7 @@ const slice = createSlice({
       } else {
         const _gasTotal = sumHexes(
           draftTransaction.gas.gasTotal || '0x0',
-          state.layer1GasTotal || '0x0',
+          state.gasTotalForLayer1 || '0x0',
         );
         amount = subtractCurrencies(
           addHexPrefix(draftTransaction.asset.balance),
@@ -1159,13 +1134,13 @@ const slice = createSlice({
      * @param {SendStateDraft} state - A writable draft of the send state to be
      *  updated.
      * @param {SimpleStringPayload} action - the
-     *  layer1GasTotal to set in hex wei.
+     *  gasTotalForLayer1 to set in hex wei.
      * @returns {void}
      */
     updateLayer1Fees: (state, action) => {
       const draftTransaction =
         state.draftTransactions[state.currentTransactionUUID];
-      state.layer1GasTotal = action.payload;
+      state.gasTotalForLayer1 = action.payload;
       if (
         state.amountMode === AMOUNT_MODES.MAX &&
         draftTransaction.asset.type === ASSET_TYPES.NATIVE
@@ -1279,7 +1254,7 @@ const slice = createSlice({
       slice.caseReducers.validateSendState(state);
     },
     /**
-     * Updates the isCustomGasSet property to false which results in showing
+     * Updates the gasIsSetInModal property to false which results in showing
      * the default gas price/limit fields in the send page.
      *
      * @param {SendStateDraft} state - A writable draft of the send state to be
@@ -1287,10 +1262,10 @@ const slice = createSlice({
      * @returns {void}
      */
     useDefaultGas: (state) => {
-      state.isCustomGasSet = false;
+      state.gasIsSetInModal = false;
     },
     /**
-     * Updates the isCustomGasSet property to true which results in showing
+     * Updates the gasIsSetInModal property to true which results in showing
      * the gas fees from the custom gas modal in the send page.
      *
      * @param {SendStateDraft} state - A writable draft of the send state to be
@@ -1298,7 +1273,7 @@ const slice = createSlice({
      * @returns {void}
      */
     useCustomGas: (state) => {
-      state.isCustomGasSet = true;
+      state.gasIsSetInModal = true;
     },
     /**
      * Updates the value of the recipientInput key with what the user has
@@ -1471,7 +1446,7 @@ const slice = createSlice({
      * case 5: State is invalid if no recipient has been added.
      * case 6: State is invalid if the send state is uninitialized.
      * case 7: State is invalid if gas estimates are loading.
-     * case 8: State is invalid if gasLimit is less than the minimumGasLimit.
+     * case 8: State is invalid if gasLimit is less than the gasLimitMinimum.
      *
      * @param {SendStateDraft} state - A writable draft of the send state to be
      *  updated.
@@ -1488,9 +1463,9 @@ const slice = createSlice({
           draftTransaction.asset.details === null:
         case state.stage === SEND_STAGES.ADD_RECIPIENT:
         case state.stage === SEND_STAGES.INACTIVE:
-        case state.isGasEstimateLoading:
+        case state.gasEstimateIsLoading:
         case new BigNumber(draftTransaction.gas.gasLimit, 16).lessThan(
-          new BigNumber(state.minimumGasLimit),
+          new BigNumber(state.gasLimitMinimum),
         ):
           draftTransaction.status = SEND_STATUSES.INVALID;
           break;
@@ -1593,10 +1568,9 @@ const slice = createSlice({
       })
       .addCase(initializeSendState.pending, (state) => {
         // when we begin initializing state, which can happen when switching
-        // chains even after loading the send flow, we set
-        // gas.isGasEstimateLoading as initialization will trigger a fetch
-        // for gasPrice estimates.
-        state.isGasEstimateLoading = true;
+        // chains even after loading the send flow, we set gasEstimateIsLoading
+        // as initialization will trigger a fetch for gasPrice estimates.
+        state.gasEstimateIsLoading = true;
       })
       .addCase(initializeSendState.fulfilled, (state, action) => {
         // writes the computed initialized state values into the slice and then
@@ -1616,7 +1590,7 @@ const slice = createSlice({
         draftTransaction.gas.gasTotal = action.payload.gasTotal;
         state.gasEstimatePollToken = action.payload.gasEstimatePollToken;
         if (action.payload.gasEstimatePollToken) {
-          state.isGasEstimateLoading = false;
+          state.gasEstimateIsLoading = false;
         }
         if (state.stage !== SEND_STAGES.INACTIVE) {
           slice.caseReducers.validateRecipientUserInput(state, {
@@ -1639,30 +1613,30 @@ const slice = createSlice({
       .addCase(computeEstimatedGasLimit.pending, (state) => {
         // When we begin to fetch gasLimit we should indicate we are loading
         // a gas estimate.
-        state.isGasEstimateLoading = true;
+        state.gasEstimateIsLoading = true;
       })
       .addCase(computeEstimatedGasLimit.fulfilled, (state, action) => {
         // When we receive a new gasLimit from the computeEstimatedGasLimit
         // thunk we need to update our gasLimit in the slice. We call into the
         // caseReducer updateGasLimit to tap into the appropriate follow up
-        // checks and gasTotal calculation. First set isGasEstimateLoading to
+        // checks and gasTotal calculation. First set gasEstimateIsLoading to
         // false.
-        state.isGasEstimateLoading = false;
+        state.gasEstimateIsLoading = false;
         if (action.payload?.gasLimit) {
           slice.caseReducers.updateGasLimit(state, {
             payload: action.payload.gasLimit,
           });
         }
-        if (action.payload?.layer1GasTotal) {
+        if (action.payload?.gasTotalForLayer1) {
           slice.caseReducers.updateLayer1Fees(state, {
-            payload: action.payload.layer1GasTotal,
+            payload: action.payload.gasTotalForLayer1,
           });
         }
       })
       .addCase(computeEstimatedGasLimit.rejected, (state) => {
         // If gas estimation fails, we should set the loading state to false,
         // because it is no longer loading
-        state.isGasEstimateLoading = false;
+        state.gasEstimateIsLoading = false;
       })
       .addCase(GAS_FEE_ESTIMATES_UPDATED, (state, action) => {
         // When the gasFeeController updates its gas fee estimates we need to
@@ -2374,19 +2348,19 @@ export function gasFeeIsInError(state) {
  * @type {Selector<string>}
  */
 export function getMinimumGasLimitForSend(state) {
-  return state[name].minimumGasLimit;
+  return state[name].gasLimitMinimum;
 }
 
 /**
  * Selector that returns the current draft transaction's gasLimit.
  *
- * @type {Selector<SendStateGasModeStrings>}
+ * @type {Selector<MapValuesToUnion<SendStateGasModes>>}
  */
 export function getGasInputMode(state) {
   const isMainnet = getIsMainnet(state);
   const gasEstimateType = getGasEstimateType(state);
   const showAdvancedGasFields = getAdvancedInlineGasShown(state);
-  if (state[name].isCustomGasSet) {
+  if (state[name].gasIsSetInModal) {
     return GAS_INPUT_MODES.CUSTOM;
   }
   if ((!isMainnet && !process.env.IN_TEST) || showAdvancedGasFields) {
@@ -2472,7 +2446,7 @@ export function getIsBalanceInsufficient(state) {
 /**
  * Selector that returns the amoung send mode, either MAX or INPUT.
  *
- * @type {Selector<SendStateAmountModeStrings>}
+ * @type {Selector<boolean>}
  */
 export function getSendMaxModeState(state) {
   return state[name].amountMode === AMOUNT_MODES.MAX;
@@ -2587,7 +2561,7 @@ export function isSendFormInvalid(state) {
 /**
  * Selector that returns the current stage of the send flow
  *
- * @type {Selector<SendStateStagesStrings>}
+ * @type {Selector<MapValuesToUnion<SendStateStages>>}
  */
 export function getSendStage(state) {
   return state[name].stage;

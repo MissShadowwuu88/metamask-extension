@@ -106,7 +106,9 @@ async function withFixtures(options, testSuite) {
           '\n',
         )}`;
         if (failOnConsoleError) {
-          throw new Error(errorMessage);
+          const error = new Error(errorMessage);
+          error.stack = errors.map((err) => err.stack).join('\n');
+          throw error;
         } else {
           console.error(new Error(errorMessage));
         }
