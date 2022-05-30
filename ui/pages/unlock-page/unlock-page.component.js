@@ -43,7 +43,7 @@ export default class UnlockPage extends Component {
     /**
      * Function to detect a new account
      */
-    autoDetectAccounts: PropTypes.func,
+    // autoDetectAccounts: PropTypes.func,
   };
 
   state = {
@@ -72,7 +72,7 @@ export default class UnlockPage extends Component {
       onSubmit,
       forceUpdateMetamaskState,
       showOptInModal,
-      autoDetectAccounts,
+      // autoDetectAccounts,
     } = this.props;
 
     if (password === '' || this.submitting) {
@@ -105,7 +105,7 @@ export default class UnlockPage extends Component {
       ) {
         showOptInModal();
       }
-      autoDetectAccounts();
+      // autoDetectAccounts();
     } catch ({ message }) {
       if (message === 'Incorrect password') {
         const newState = await forceUpdateMetamaskState();
