@@ -188,6 +188,7 @@ describe('Send a custom token from dapp', function () {
         windowHandles = await getWindowHandles(driver, 3);
         await driver.switchToWindow(windowHandles.popup);
 
+        await driver.delay(2000);
         await driver.waitForSelector({ text: 'Confirm', tag: 'button' });
         await driver.clickElement({ text: 'Confirm', tag: 'button' });
 
@@ -260,6 +261,7 @@ describe('Send a custom token from dapp', function () {
         windowHandles = await getWindowHandles(driver, 3);
         await driver.switchToWindow(windowHandles.popup);
 
+        await driver.delay(2000);
         await driver.waitForSelector({ text: 'Edit', tag: 'button' });
         await driver.clickElement({ text: 'Edit', tag: 'button' });
 
@@ -307,7 +309,7 @@ describe('Send a custom token from dapp', function () {
 
         await driver.waitForSelector({
           css: '.asset-list-item__token-button',
-          text: '7.5 TST',
+          text: '8.5 TST',
         });
 
         await driver.clickElement({
